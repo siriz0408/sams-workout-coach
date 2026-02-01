@@ -3,10 +3,12 @@
  * First-time user profile setup
  */
 
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useSaveUserProfile } from '@/hooks/use-user-profile';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 
 export default function OnboardingScreen() {
   const [currentWeight, setCurrentWeight] = useState('');
@@ -14,16 +16,24 @@ export default function OnboardingScreen() {
   const [height, setHeight] = useState('');
   const [age, setAge] = useState('');
   const [dailyCalories, setDailyCalories] = useState('');
+  const [isCreatingCircuits, setIsCreatingCircuits] = useState(false);
 
+  const { user } = useAuth();
   const saveProfile = useSaveUserProfile();
 
   const handleContinue = async () => {
     if (!currentWeight || !goalWeight || !height) {
-      alert('Please fill in all required fields');
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Error', 'User not authenticated');
       return;
     }
 
     try {
+      // Save user profile
       await saveProfile.mutateAsync({
         current_weight: parseFloat(currentWeight),
         goal_weight: parseFloat(goalWeight),
@@ -32,10 +42,30 @@ export default function OnboardingScreen() {
         daily_calorie_target: dailyCalories ? parseInt(dailyCalories) : undefined,
       });
 
-      router.replace('/(tabs)');
+      // Create default workout circuits (INFERNO, FORGE, TITAN, SURGE)
+      setIsCreatingCircuits(true);
+      const { data, error: circuitError } = await supabase.rpc(
+        'create_default_circuits_for_user',
+        { target_user_id: user.id }
+      );
+
+      if (circuitError) {
+        console.error('Failed to create circuits:', circuitError);
+        // Don't block onboarding if circuit creation fails
+        Alert.alert(
+          'Warning',
+          'Profile saved but default workouts could not be created. You can create custom workouts later.',
+          [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+        );
+      } else {
+        // Success - navigate to home
+        router.replace('/(tabs)');
+      }
     } catch (error) {
-      console.error('Error saving profile:', error);
-      alert('Failed to save profile. Please try again.');
+      console.error('Error during onboarding:', error);
+      Alert.alert('Error', 'Failed to complete setup. Please try again.');
+    } finally {
+      setIsCreatingCircuits(false);
     }
   };
 
@@ -117,12 +147,16 @@ export default function OnboardingScreen() {
         </View>
 
         <Pressable
-          style={styles.button}
+          style={[styles.button, (saveProfile.isPending || isCreatingCircuits) && styles.buttonDisabled]}
           onPress={handleContinue}
-          disabled={saveProfile.isPending}
+          disabled={saveProfile.isPending || isCreatingCircuits}
         >
           <Text style={styles.buttonText}>
-            {saveProfile.isPending ? 'Saving...' : 'Continue'}
+            {saveProfile.isPending
+              ? 'Saving profile...'
+              : isCreatingCircuits
+              ? 'Setting up workouts...'
+              : 'Continue'}
           </Text>
         </Pressable>
       </ScrollView>
@@ -185,6 +219,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonText: {
     color: '#fff',

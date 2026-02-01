@@ -29,7 +29,16 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Sam's Workout Coach",
+      "shortName": "Workout Coach",
+      "description": "AI-powered workout tracking and coaching for BJJ athletes",
+      "themeColor": "#2196F3",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "lang": "en"
     },
     "plugins": [
       "expo-router",
