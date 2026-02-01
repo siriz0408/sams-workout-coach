@@ -1,12 +1,13 @@
 /**
  * Supabase Client Configuration
  * Handles connection to Supabase backend and authentication
+ * Web-compatible version using localStorage for web, SecureStore for native
  */
 
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { Database } from '@/types/supabase';
 
 // Get environment variables
@@ -21,51 +22,72 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Secure storage adapter for auth tokens
- * Uses SecureStore (iOS Keychain/Android Keystore) for sensitive data
+ * Web-compatible storage adapter for auth tokens
+ * Uses localStorage on web, AsyncStorage on native (SecureStore not needed for web)
  */
-class SupabaseSecureStorage {
+class SupabaseStorage {
   async getItem(key: string): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(key);
-    } catch (error) {
-      console.error('Error reading from SecureStore:', error);
-      // Fallback to AsyncStorage if SecureStore fails
-      return await AsyncStorage.getItem(key);
+    if (Platform.OS === 'web') {
+      // Use localStorage on web
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+      return null;
+    } else {
+      // Use AsyncStorage on native platforms
+      // Note: For production native apps, consider using expo-secure-store
+      try {
+        return await AsyncStorage.getItem(key);
+      } catch (error) {
+        console.error('Error reading from AsyncStorage:', error);
+        return null;
+      }
     }
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    try {
-      await SecureStore.setItemAsync(key, value);
-    } catch (error) {
-      console.error('Error writing to SecureStore:', error);
-      // Fallback to AsyncStorage if SecureStore fails
-      await AsyncStorage.setItem(key, value);
+    if (Platform.OS === 'web') {
+      // Use localStorage on web
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } else {
+      // Use AsyncStorage on native platforms
+      try {
+        await AsyncStorage.setItem(key, value);
+      } catch (error) {
+        console.error('Error writing to AsyncStorage:', error);
+      }
     }
   }
 
   async removeItem(key: string): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(key);
-    } catch (error) {
-      console.error('Error deleting from SecureStore:', error);
-      // Fallback to AsyncStorage if SecureStore fails
-      await AsyncStorage.removeItem(key);
+    if (Platform.OS === 'web') {
+      // Use localStorage on web
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+    } else {
+      // Use AsyncStorage on native platforms
+      try {
+        await AsyncStorage.removeItem(key);
+      } catch (error) {
+        console.error('Error deleting from AsyncStorage:', error);
+      }
     }
   }
 }
 
 /**
  * Supabase client instance
- * Configured with secure storage for auth tokens
+ * Configured with web-compatible storage for auth tokens
  */
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: new SupabaseSecureStorage(),
+    storage: new SupabaseStorage(),
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false, // Disable for mobile
+    detectSessionInUrl: Platform.OS === 'web', // Enable URL detection on web for OAuth callbacks
   },
 });
 
