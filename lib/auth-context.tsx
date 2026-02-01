@@ -29,16 +29,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    supabase.auth.getSession()
+      .then(async ({ data: { session }, error }) => {
+        if (error) {
+          console.error('Error getting session:', error);
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
 
-      // If session exists, check onboarding status and redirect
-      if (session) {
-        await handleAuthRedirect(session);
-      }
-    });
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+
+        // If session exists, check onboarding status and redirect
+        if (session) {
+          await handleAuthRedirect(session);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to get session:', error);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
