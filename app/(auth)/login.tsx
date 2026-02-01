@@ -1,60 +1,57 @@
 /**
  * Login Screen
- * Google and Apple OAuth sign-in
+ * Simple email/password authentication
  */
 
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useState } from 'react';
-import { signInWithGoogle, signInWithApple, hasCompletedOnboarding } from '@/lib/auth-helpers';
+import { signInWithEmail, signUpWithEmail } from '@/lib/auth-helpers';
 
 export default function LoginScreen() {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
+  const handleSubmit = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // On web, this will redirect to Google OAuth
-      // After successful auth, Google redirects back and the session is handled automatically
-      await signInWithGoogle();
+      // Basic validation
+      if (!email || !password) {
+        setError('Please enter email and password');
+        return;
+      }
 
-      // Note: On web, this code won't execute because the page redirects
-      // The session check happens in the root layout after redirect
-    } catch (err: any) {
-      console.error('Google sign-in error:', err);
-      setError(err.message || 'Failed to sign in with Google');
-      setLoading(false);
-    }
-  };
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters');
+        return;
+      }
 
-  const handleAppleSignIn = async () => {
-    if (Platform.OS !== 'ios') {
-      setError('Apple Sign-In is only available on iOS');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const session = await signInWithApple();
-
-      if (session) {
-        // Check if user has completed onboarding
-        const completed = await hasCompletedOnboarding(session.user.id);
-
-        if (completed) {
-          router.replace('/(tabs)');
-        } else {
-          router.replace('/(auth)/onboarding');
-        }
+      if (isSignUp) {
+        // Sign up new user
+        await signUpWithEmail(email, password);
+        // Session will be created automatically and auth context will handle navigation
+      } else {
+        // Sign in existing user
+        await signInWithEmail(email, password);
+        // Session created, auth context handles navigation
       }
     } catch (err: any) {
-      console.error('Apple sign-in error:', err);
-      setError(err.message || 'Failed to sign in with Apple');
+      console.error('Auth error:', err);
+
+      // User-friendly error messages
+      if (err.message?.includes('Invalid login credentials')) {
+        setError('Invalid email or password');
+      } else if (err.message?.includes('Email not confirmed')) {
+        setError('Please check your email to confirm your account');
+      } else if (err.message?.includes('User already registered')) {
+        setError('This email is already registered. Try signing in instead.');
+      } else {
+        setError(err.message || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -67,28 +64,57 @@ export default function LoginScreen() {
         <Text style={styles.subtitle}>Your AI-Powered Training Partner</Text>
       </View>
 
-      <View style={styles.buttonContainer}>
+      <View style={styles.formContainer}>
+        <Text style={styles.formTitle}>
+          {isSignUp ? 'Create Account' : 'Sign In'}
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          editable={!loading}
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Password (min 6 characters)"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+        />
+
         <Pressable
-          style={[styles.button, styles.googleButton]}
-          onPress={handleGoogleSignIn}
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleSubmit}
           disabled={loading}
         >
           <Text style={styles.buttonText}>
-            {loading ? 'Signing in...' : 'Continue with Google'}
+            {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
           </Text>
         </Pressable>
 
-        {Platform.OS === 'ios' && (
-          <Pressable
-            style={[styles.button, styles.appleButton]}
-            onPress={handleAppleSignIn}
-            disabled={loading}
-          >
-            <Text style={[styles.buttonText, styles.appleButtonText]}>
-              {loading ? 'Signing in...' : 'Continue with Apple'}
-            </Text>
-          </Pressable>
-        )}
+        <Pressable
+          style={styles.toggleButton}
+          onPress={() => {
+            setIsSignUp(!isSignUp);
+            setError(null);
+          }}
+          disabled={loading}
+        >
+          <Text style={styles.toggleText}>
+            {isSignUp
+              ? 'Already have an account? Sign In'
+              : "Don't have an account? Sign Up"}
+          </Text>
+        </Pressable>
       </View>
 
       {error && (
@@ -127,28 +153,48 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
   },
-  buttonContainer: {
+  formContainer: {
     gap: 16,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  input: {
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    backgroundColor: '#fff',
   },
   button: {
     height: 56,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  googleButton: {
     backgroundColor: '#4285F4',
+    marginTop: 8,
   },
-  appleButton: {
-    backgroundColor: '#000',
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  appleButtonText: {
-    color: '#fff',
+  toggleButton: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  toggleText: {
+    color: '#4285F4',
+    fontSize: 14,
+    fontWeight: '500',
   },
   errorContainer: {
     marginTop: 24,
