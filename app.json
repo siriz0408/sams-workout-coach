@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "sams-workout-coach",
+    "name": "Sam's Workout Coach",
     "slug": "sams-workout-coach",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,9 +14,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.samworkout.coach"
     },
     "android": {
+      "package": "com.samworkout.coach",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -30,7 +32,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

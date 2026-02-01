@@ -5,8 +5,11 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { AuthProvider } from '@/lib/auth-context';
+import { queryClient } from '@/lib/query-client';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -49,11 +52,20 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="workout/[id]" options={{ title: 'Active Workout' }} />
+            <Stack.Screen name="program/[id]" options={{ title: 'Program Details' }} />
+            <Stack.Screen name="exercise/[id]" options={{ presentation: 'modal', title: 'Exercise Details' }} />
+            <Stack.Screen name="weekly-summary" options={{ title: 'Weekly Summary' }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

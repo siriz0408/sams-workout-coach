@@ -1,0 +1,27 @@
+/**
+ * Auth Layout
+ * Handles authentication and onboarding screens
+ */
+
+import { Stack } from 'expo-router';
+
+export default function AuthLayout() {
+  return (
+    <Stack>
+      <Stack.Screen
+        name="login"
+        options={{
+          headerShown: false,
+          title: 'Sign In'
+        }}
+      />
+      <Stack.Screen
+        name="onboarding"
+        options={{
+          headerShown: false,
+          title: 'Set Up Your Profile'
+        }}
+      />
+    </Stack>
+  );
+}
