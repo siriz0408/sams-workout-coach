@@ -8,16 +8,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **[Implementation Plan](/Users/sam.irizarry/.claude/plans/dazzling-scribbling-lollipop.md)** - Detailed technical implementation plan
 
+**[Documentation Sync Guide](DOCUMENTATION_SYNC.md)** - Documentation feedback loop and update procedures
+
+### Phase 2 Quality Reports (Feb 2026)
+All comprehensive technical analysis reports from Phase 2 QA:
+- **[Code Quality Audit](CODE_QUALITY_AUDIT.md)** - Security, error handling, TypeScript coverage (Score: 92/100)
+- **[User Journey Tests](USER_JOURNEY_TESTS.md)** - 5 critical user journeys validated (98% complete)
+- **[Performance Optimization](PERFORMANCE_OPTIMIZATION.md)** - Caching, queries, bundle size (Score: 88/100)
+- **[Accessibility Audit](ACCESSIBILITY_AUDIT.md)** - WCAG 2.2 compliance review (Score: 78/100)
+- **[Web Compatibility](WEB_COMPATIBILITY.md)** - React Native Web compatibility (Score: 92/100)
+- **[Phase 2 Summary](PHASE2_SUMMARY.md)** - Complete QA results and production readiness
+
 ## Project Overview
 
-Sam's AI-Powered Workout Coach is a React Native mobile app for discovering, tracking, and optimizing workout programs with AI coaching. The app uses a cloud-first architecture with Supabase backend and AI integration via Edge Functions.
+Sam's AI-Powered Workout Coach is a **responsive web application** (React Native Web via Expo) for discovering, tracking, and optimizing workout programs with AI coaching. The app uses a cloud-first architecture with Supabase backend and AI integration via Edge Functions.
+
+**Platform**: Web-first (Vercel deployment)
+- Primary: iPhone browser (Chrome/Safari) for gym use
+- Secondary: MacBook for planning and progress review
+- Always online (no offline support needed)
+
+**Implementation Status**: **100% MVP Complete** ✅
+- Phase 1: Critical features (100% complete)
+- Phase 2: QA & Testing (100% complete)
+- Phase 3: Deployment (ready to start)
 
 **Key differentiators:**
-- Flexible workout program platform (not hardcoded circuits)
+- Pre-programmed workout circuits (INFERNO, FORGE, TITAN, SURGE)
 - Full AI training coach using OpenAI and Anthropic APIs
 - Recovery-aware recommendations considering BJJ/softball schedule
 - Data storytelling approach to progress visualization
-- Beginner-friendly stack: Expo + Supabase
+- Nutrition tracking with macro targets (1,800-2,000 cal, 180-200g protein)
+- Beginner-friendly stack: Expo + Supabase + Vercel
 
 ## Tech Stack
 
@@ -36,8 +58,11 @@ Sam's AI-Powered Workout Coach is a React Native mobile app for discovering, tra
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (web + mobile)
 npx expo start
+
+# Web only
+npx expo start --web
 
 # iOS simulator
 npx expo start --ios
@@ -47,6 +72,20 @@ npx expo start --android
 
 # Clear cache if needed
 npx expo start --clear
+```
+
+### Web Build & Deploy
+```bash
+# Build for web (production)
+npm run build
+# or
+npm run build:web
+
+# Preview build locally
+npm run preview
+
+# Test build and serve
+npm run test:build
 ```
 
 ### Supabase Edge Functions
@@ -72,6 +111,36 @@ supabase db push
 # Reset database (caution: deletes data)
 supabase db reset
 ```
+
+### Web Deployment (Vercel)
+
+**Configuration Files:**
+- `vercel.json` - Vercel build and routing configuration
+- `app.json` (web section) - PWA configuration, meta tags, theme
+- `web-build/index.html` - Custom HTML template with SEO/loading spinner
+
+**Local Testing:**
+```bash
+# Build for web
+npm run build
+
+# Preview locally (serves from dist/)
+npm run preview
+
+# Access at http://localhost:3000
+```
+
+**Deployment Process:**
+1. Push to GitHub main branch
+2. Vercel auto-builds via `npx expo export --platform web`
+3. Output to `dist/` directory
+4. Vercel serves with SPA routing (all routes → index.html)
+
+**Web-Specific Adjustments:**
+- React Native Paper components work on web
+- Victory Native auto-uses Victory (web version)
+- Expo Router handles web routing
+- All components tested for web compatibility (see `WEB_COMPATIBILITY.md`)
 
 ## Architecture
 
@@ -118,14 +187,20 @@ All AI calls happen server-side to secure API keys and optimize costs (~$2/user/
 ```
 app/
 ├── (auth)/               # Login, onboarding
-├── (tabs)/              # Main tab navigation
+│   ├── login.tsx        # Google OAuth
+│   └── onboarding.tsx   # First-time setup (creates default circuits)
+├── (tabs)/              # Main tab navigation (5 tabs)
 │   ├── index.tsx        # Home/Dashboard
 │   ├── discover.tsx     # AI Workout Discovery
-│   ├── progress.tsx     # Charts & Analytics
-│   └── profile.tsx      # Settings
+│   ├── nutrition.tsx    # Nutrition Tracking (NEW)
+│   ├── progress.tsx     # Charts & Analytics (Weight, Strength, Activity)
+│   └── profile.tsx      # Settings & Profile Edit
 ├── workout/[id].tsx     # Active Workout Screen
 ├── program/[id].tsx     # Program Detail
-└── exercise/[id].tsx    # Exercise Detail Modal
+├── program/create.tsx   # Custom Program Creation
+├── exercise/[id].tsx    # Exercise Detail Modal
+├── activity.tsx         # Activity Tracking (BJJ/Softball)
+└── weekly-summary.tsx   # AI Weekly Coaching Summary
 ```
 
 **Deep linking works automatically** - use `router.push('/workout/[id]')` for navigation.
@@ -134,11 +209,32 @@ app/
 
 **React Query (Server State):**
 ```typescript
-// Use for all Supabase data fetching
+// Workout hooks
 useWorkoutPrograms()
 useActiveWorkout(id)
 useExerciseHistory(exerciseId)
+useWorkoutSessions(limit)
+useWorkoutStreaks()
+
+// Nutrition hooks (NEW)
+useLogMeal()
+useDailyNutrition(date)
+useWeeklyAdherence()
+useRecentMeals(limit)
+
+// Activity hooks (NEW)
+useLogActivity()
+useRecoveryContext()
+useWeeklyActivityStats()
+useRecentActivities(limit)
+
+// AI hooks
 useAIRecommendations()
+usePendingRecommendations()
+
+// User hooks
+useUserProfile()
+useWeightTrend(days)
 ```
 
 **Zustand (UI State):**
@@ -341,22 +437,33 @@ curl -i --location --request POST 'http://localhost:54321/functions/v1/<function
   --data '{"test": "data"}'
 ```
 
-## MVP Scope
+## MVP Scope & Current Status
 
-**In scope:**
-- AI workout discovery (chat + form modes)
-- Flexible workout logging (any program structure)
-- Pre/post workout coaching
-- Weekly AI summaries with recommendations
-- Weight + strength progress tracking
-- Simple calorie tracking
-- BJJ/softball activity logging
+**Completed Features ✅:**
+- ✅ AI workout discovery (chat + form modes)
+- ✅ Pre-programmed circuits (INFERNO, FORGE, TITAN, SURGE) auto-created at onboarding
+- ✅ Flexible workout logging (any program structure)
+- ✅ Pre/post workout coaching with AI analysis
+- ✅ Weekly AI summaries with recommendations
+- ✅ Weight tracking with 90-day trend chart
+- ✅ Strength progress tracking per exercise with PR markers
+- ✅ Full nutrition tracking with macros (protein, carbs, fats)
+- ✅ Daily calorie/macro progress bars with weekly adherence
+- ✅ BJJ/softball activity logging with recovery context
+- ✅ Recovery-aware pre-workout recommendations
+
+**Quality Assurance (Phase 2) ✅:**
+- Code Quality: 92/100 (see `CODE_QUALITY_AUDIT.md`)
+- Performance: 88/100 (see `PERFORMANCE_OPTIMIZATION.md`)
+- Accessibility: 78/100 (see `ACCESSIBILITY_AUDIT.md`)
+- Web Compatibility: 92/100 (see `WEB_COMPATIBILITY.md`)
+- User Journey Tests: 98% complete (see `USER_JOURNEY_TESTS.md`)
+- Overall Quality: 87.5/100 - **PRODUCTION READY** ✅
 
 **Out of scope for MVP:**
 - Offline support (gym has WiFi)
 - Social features
 - Apple Health integration
-- Meal/macro tracking (just calories)
 - Exercise substitutions
 - Multiple active programs simultaneously
 
