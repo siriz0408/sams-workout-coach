@@ -87,7 +87,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: new SupabaseStorage(),
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: Platform.OS === 'web', // Enable URL detection on web for OAuth callbacks
+    detectSessionInUrl: false, // Disabled - using email/password auth, not OAuth
   },
 });
 
