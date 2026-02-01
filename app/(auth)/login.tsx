@@ -1,9 +1,9 @@
 /**
- * Login Screen
- * Simple email/password authentication
+ * Login Screen - Simple Email/Password Authentication
+ * No OAuth, no redirects, just straightforward auth
  */
 
-import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { signInWithEmail, signUpWithEmail } from '@/lib/auth-helpers';
 
@@ -31,14 +31,11 @@ export default function LoginScreen() {
       }
 
       if (isSignUp) {
-        // Sign up new user
         await signUpWithEmail(email, password);
-        // Session will be created automatically and auth context will handle navigation
       } else {
-        // Sign in existing user
         await signInWithEmail(email, password);
-        // Session created, auth context handles navigation
       }
+      // Auth context handles navigation after successful login
     } catch (err: any) {
       console.error('Auth error:', err);
 
@@ -72,6 +69,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#999"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -83,6 +81,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password (min 6 characters)"
+          placeholderTextColor="#999"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -96,9 +95,13 @@ export default function LoginScreen() {
           onPress={handleSubmit}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>
-            {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isSignUp ? 'Create Account' : 'Sign In'}
+            </Text>
+          )}
         </Pressable>
 
         <Pressable
@@ -112,7 +115,7 @@ export default function LoginScreen() {
           <Text style={styles.toggleText}>
             {isSignUp
               ? 'Already have an account? Sign In'
-              : "Don't have an account? Sign Up"}
+              : "Don't have an account? Create Account"}
           </Text>
         </Pressable>
       </View>
@@ -161,6 +164,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
     marginBottom: 8,
+    textAlign: 'center',
   },
   input: {
     height: 56,
@@ -170,6 +174,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     backgroundColor: '#fff',
+    color: '#000',
   },
   button: {
     height: 56,
@@ -190,6 +195,7 @@ const styles = StyleSheet.create({
   toggleButton: {
     marginTop: 8,
     alignItems: 'center',
+    padding: 12,
   },
   toggleText: {
     color: '#4285F4',
@@ -205,6 +211,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#C62828',
     textAlign: 'center',
+    fontSize: 14,
   },
   footer: {
     marginTop: 48,
