@@ -2,7 +2,6 @@
 -- Migration: 20260201000000_initial_schema.sql
 
 -- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
 -- ENUM TYPES
@@ -32,7 +31,7 @@ CREATE TABLE user_profiles (
 
 -- Exercise library (shared + user custom)
 CREATE TABLE exercises (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   muscle_groups TEXT[],
   equipment TEXT[],
@@ -45,7 +44,7 @@ CREATE TABLE exercises (
 
 -- Workout programs
 CREATE TABLE workout_programs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -57,7 +56,7 @@ CREATE TABLE workout_programs (
 
 -- Workouts (templates within programs)
 CREATE TABLE workouts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   program_id UUID NOT NULL REFERENCES workout_programs(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -68,7 +67,7 @@ CREATE TABLE workouts (
 
 -- Workout rounds
 CREATE TABLE workout_rounds (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workout_id UUID NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
   round_number INTEGER NOT NULL,
   name TEXT,
@@ -78,7 +77,7 @@ CREATE TABLE workout_rounds (
 
 -- Workout exercises (exercises within rounds)
 CREATE TABLE workout_exercises (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   round_id UUID NOT NULL REFERENCES workout_rounds(id) ON DELETE CASCADE,
   exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
   order_in_round INTEGER NOT NULL,
@@ -90,7 +89,7 @@ CREATE TABLE workout_exercises (
 
 -- User workout sessions (logged workouts)
 CREATE TABLE user_workout_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   workout_id UUID NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
   started_at TIMESTAMPTZ NOT NULL,
@@ -104,7 +103,7 @@ CREATE TABLE user_workout_sessions (
 
 -- Exercise logs (individual exercise performance)
 CREATE TABLE exercise_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES user_workout_sessions(id) ON DELETE CASCADE,
   exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
   round_number INTEGER NOT NULL,
@@ -117,7 +116,7 @@ CREATE TABLE exercise_logs (
 
 -- Activity logs (BJJ, softball, etc.)
 CREATE TABLE activity_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   activity_type activity_type NOT NULL,
   date DATE NOT NULL,
@@ -129,7 +128,7 @@ CREATE TABLE activity_logs (
 
 -- Body measurements
 CREATE TABLE body_measurements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   measured_at TIMESTAMPTZ NOT NULL,
   weight DECIMAL(5,2) NOT NULL,  -- lbs
@@ -139,7 +138,7 @@ CREATE TABLE body_measurements (
 
 -- Nutrition logs
 CREATE TABLE nutrition_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   calories INTEGER NOT NULL,
@@ -150,7 +149,7 @@ CREATE TABLE nutrition_logs (
 
 -- AI recommendations
 CREATE TABLE ai_recommendations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   recommendation_type recommendation_type NOT NULL,
   exercise_id UUID REFERENCES exercises(id),
