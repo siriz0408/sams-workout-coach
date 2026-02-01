@@ -1,101 +1,45 @@
 /**
  * Authentication Helper Functions
  * OAuth flows for Google and Apple Sign-In
+ * Web-compatible implementation
  */
 
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
 import { Platform } from 'react-native';
 
-// Complete the web browser session for OAuth
-WebBrowser.maybeCompleteAuthSession();
-
-/**
- * Generate a random string for PKCE code verifier
- */
-function generateRandomString(length: number = 43): string {
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let text = '';
-  for (let i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-}
-
-/**
- * Generate code challenge from verifier
- */
-async function generateCodeChallenge(codeVerifier: string): Promise<string> {
-  const hash = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    codeVerifier
-  );
-  return hash
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
-
 /**
  * Sign in with Google OAuth
+ * Works on both web and native platforms
  */
 export async function signInWithGoogle() {
   try {
-    // Generate PKCE parameters
-    const codeVerifier = generateRandomString();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    if (Platform.OS === 'web') {
+      // Web-based OAuth flow
+      // Supabase will redirect to Google, user logs in, then redirects back
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          // Redirect back to the current URL after authentication
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
 
-    // Get the OAuth URL from Supabase
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: AuthSession.makeRedirectUri({
-          scheme: 'samsworkoutcoach',
-        }),
-        skipBrowserRedirect: true,
-        scopes: 'email profile',
-      },
-    });
+      if (error) {
+        throw error;
+      }
 
-    if (error) {
-      throw error;
+      // On web, this will trigger a page redirect to Google
+      // After authentication, Google redirects back and Supabase handles the session
+      // The session will be available on page load via supabase.auth.getSession()
+      return null; // Session will be available after redirect
+    } else {
+      // Native mobile OAuth flow (if needed in future)
+      throw new Error('Native OAuth not implemented yet. This app is web-only.');
     }
-
-    if (!data.url) {
-      throw new Error('No OAuth URL returned from Supabase');
-    }
-
-    // Open the OAuth prompt in browser
-    const result = await WebBrowser.openAuthSessionAsync(
-      data.url,
-      AuthSession.makeRedirectUri({
-        scheme: 'samsworkoutcoach',
-      })
-    );
-
-    if (result.type !== 'success') {
-      throw new Error('OAuth flow was cancelled or failed');
-    }
-
-    // Extract the code from the callback URL
-    const url = new URL(result.url);
-    const code = url.searchParams.get('code');
-
-    if (!code) {
-      throw new Error('No authorization code received');
-    }
-
-    // Exchange code for session
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code);
-
-    if (sessionError) {
-      throw sessionError;
-    }
-
-    return sessionData.session;
   } catch (error) {
     console.error('Error signing in with Google:', error);
     throw error;

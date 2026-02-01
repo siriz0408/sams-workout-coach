@@ -17,22 +17,15 @@ export default function LoginScreen() {
       setLoading(true);
       setError(null);
 
-      const session = await signInWithGoogle();
+      // On web, this will redirect to Google OAuth
+      // After successful auth, Google redirects back and the session is handled automatically
+      await signInWithGoogle();
 
-      if (session) {
-        // Check if user has completed onboarding
-        const completed = await hasCompletedOnboarding(session.user.id);
-
-        if (completed) {
-          router.replace('/(tabs)');
-        } else {
-          router.replace('/(auth)/onboarding');
-        }
-      }
+      // Note: On web, this code won't execute because the page redirects
+      // The session check happens in the root layout after redirect
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       setError(err.message || 'Failed to sign in with Google');
-    } finally {
       setLoading(false);
     }
   };

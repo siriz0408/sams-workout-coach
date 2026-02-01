@@ -29,21 +29,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // If session exists, check onboarding status and redirect
+      if (session) {
+        await handleAuthRedirect(session);
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Redirect to login if signed out
-        if (!session) {
+        if (session && event === 'SIGNED_IN') {
+          // User just signed in (including OAuth callback)
+          await handleAuthRedirect(session);
+        } else if (!session) {
+          // User signed out - redirect to login
           router.replace('/(auth)/login');
         }
       }
@@ -53,6 +62,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Helper function to check onboarding and redirect appropriately
+  async function handleAuthRedirect(session: Session) {
+    try {
+      // Check if user has completed onboarding
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('current_weight, goal_weight, height')
+        .eq('id', session.user.id)
+        .single();
+
+      const hasCompletedOnboarding = !!(
+        data &&
+        data.current_weight &&
+        data.goal_weight &&
+        data.height
+      );
+
+      if (hasCompletedOnboarding) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(auth)/onboarding');
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      // If error, assume needs onboarding
+      router.replace('/(auth)/onboarding');
+    }
+  }
 
   const signOutUser = async () => {
     const { error } = await supabase.auth.signOut();
